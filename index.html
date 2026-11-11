@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아트홀 예약</title>
+<style>
+  :root {
+    --ink: #1f2340; --muted: #6b7090; --line: #dfe2f0; --bg: #f4f5fb; --card: #fff;
+    --brand: #4a56c9; --brand-d: #3a45a8; --brand-l: #eceefc;
+    --ok: #1f8a5b; --warn: #c0392b; --taken: #eef0f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 40px; }
+  header { text-align: center; padding: 20px 0 8px; }
+  header h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.02em; }
+  header p { margin: 6px 0 0; color: var(--muted); font-size: .92rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-top: 14px; }
+  .card h2 { margin: 0 0 12px; font-size: 1.02rem; }
+  .step { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 6px;
+          border-radius: 50%; background: var(--brand); color: #fff; font-size: .78rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip, .slot {
+    font: inherit; color: inherit; background: #fff; border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 10px 14px; cursor: pointer; transition: .12s;
+  }
+  .chip:hover:not(:disabled), .slot:hover:not(:disabled) { border-color: var(--brand); }
+  .chip.on, .slot.on { background: var(--brand-l); border-color: var(--brand); color: var(--brand-d); font-weight: 700; }
+  .chip:disabled, .slot:disabled { cursor: not-allowed; }
+  .chip:disabled { opacity: .4; }
+  .chips.cls .chip { min-width: 56px; text-align: center; }
+  .cal { border: 1.5px solid var(--line); border-radius: 14px; padding: 10px; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .cal-head b { font-size: 1rem; }
+  .cal-nav { font: inherit; font-size: 1.1rem; width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid var(--line); background: #fff; cursor: pointer; }
+  .cal-nav:disabled { opacity: .3; cursor: not-allowed; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-dow { text-align: center; font-size: .78rem; color: var(--muted); padding: 4px 0; }
+  .cal-dow:first-child, .cal-dow:nth-child(7) { color: var(--warn); }
+  .cal-day { font: inherit; color: inherit; background: #fff; border: 1.5px solid transparent; border-radius: 10px;
+             min-height: 50px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+  .cal-day:hover:not(:disabled) { border-color: var(--brand); }
+  .cal-day small { font-size: .64rem; color: var(--muted); line-height: 1.1; min-height: .7rem; }
+  .cal-day.today { border-color: var(--line); }
+  .cal-day.on { background: var(--brand); color: #fff; font-weight: 700; }
+  .cal-day.on small { color: #e3e6ff; }
+  .cal-day:disabled { color: #b8bcd0; background: transparent; cursor: not-allowed; }
+  .cal-day.full:disabled { background: var(--taken); }
+  .cal-empty { min-height: 50px; }
+  .cal-legend { margin: 8px 2px 0; font-size: .78rem; color: var(--muted); }
+  .slots { display: grid; gap: 8px; }
+  .slot { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; padding: 12px 14px; }
+  .slot b { font-weight: 700; }
+  .slot .t { color: var(--muted); font-size: .9rem; margin-left: 8px; }
+  .slot .s { font-size: .82rem; color: var(--ok); white-space: nowrap; }
+  .slot:disabled { background: var(--taken); }
+  .slot:disabled .s { color: var(--muted); }
+  .hint { color: var(--muted); font-size: .9rem; margin: 0; }
+  label { display: block; font-size: .88rem; font-weight: 600; margin: 0 0 4px; }
+  input[type=text], input[type=tel] {
+    width: 100%; font: inherit; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff;
+  }
+  input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-l); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .summary { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--brand-l); font-size: .93rem; min-height: 46px; }
+  .btn { width: 100%; margin-top: 12px; font: inherit; font-weight: 700; color: #fff; background: var(--brand);
+         border: 0; border-radius: 12px; padding: 14px; cursor: pointer; }
+  .btn:hover:not(:disabled) { background: var(--brand-d); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1.5px solid var(--line); margin-top: 0; }
+  .msg { margin-top: 10px; font-size: .92rem; min-height: 1.3em; }
+  .msg.ok { color: var(--ok); font-weight: 700; }
+  .msg.err { color: var(--warn); font-weight: 700; }
+  .day-group { margin-top: 12px; }
+  .day-group h3 { margin: 0 0 6px; font-size: .92rem; color: var(--brand-d); }
+  .res { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+         padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; font-size: .92rem; }
+  .res .who { color: var(--muted); }
+  .res button { font: inherit; font-size: .8rem; color: var(--warn); background: none; border: 1px solid #f0c9c4; border-radius: 8px; padding: 4px 9px; cursor: pointer; }
+  .banner { margin-top: 12px; padding: 10px 14px; border-radius: 12px; background: #fff6e0; border: 1px solid #f1dca3; font-size: .86rem; color: #7a5a00; }
+  footer.notice { margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: #fff; border: 1px dashed var(--muted);
+                  font-size: .86rem; color: var(--muted); }
+  footer.notice b { color: var(--ink); }
+  dialog { border: 0; border-radius: 16px; padding: 20px; width: min(92vw, 380px); box-shadow: 0 20px 60px rgba(20,24,60,.3); }
+  dialog::backdrop { background: rgba(20,24,60,.45); }
+  dialog h3 { margin: 0 0 4px; }
+  dialog .row { margin-top: 12px; }
+  .dlg-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .dlg-actions .btn { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎭 종암중 아트홀 예약 🎭</h1>
+    <p>중학교 2학년 · 반 연습용 · 먼저 신청한 반이 사용해요</p>
+  </header>
+
+  <div id="demoBanner" class="banner" hidden>
+    미리보기 모드예요. 이 브라우저에만 저장되며 스프레드시트에는 기록되지 않아요.
+    (<code>APPS_SCRIPT_URL</code>을 입력하면 실제 연결됩니다)
+  </div>
+
+  <form id="form" class="card" autocomplete="off" novalidate>
+    <h2><span class="step">1</span>연습할 학년 · 반</h2>
+    <div id="gradeChips" class="chips cls"></div>
+    <div id="clsChips" class="chips cls" style="margin-top:8px"></div>
+
+    <h2 style="margin-top:20px"><span class="step">2</span>날짜 (요일)</h2>
+    <div id="calendar" class="cal"></div>
+    <p class="cal-legend">평일만 선택할 수 있어요. 두 시간대가 모두 예약된 날은 <b>마감</b>으로 표시돼요.</p>
+
+    <h2 style="margin-top:20px"><span class="step">3</span>시간대</h2>
+    <div id="slots" class="slots"><p class="hint">먼저 날짜를 선택해 주세요.</p></div>
+
+    <h2 style="margin-top:20px"><span class="step">4</span>대표자 정보</h2>
+    <div class="row">
+      <div>
+        <label for="sid">학번</label>
+        <input id="sid" type="tel" inputmode="numeric" maxlength="5" placeholder="예) 20601">
+      </div>
+      <div>
+        <label for="name">이름</label>
+        <input id="name" type="text" maxlength="10" placeholder="예) 홍길동">
+      </div>
+    </div>
+
+    <div id="summary" class="summary">예약 내용이 여기에 표시돼요.</div>
+    <button id="submit" class="btn" type="submit">예약하기</button>
+    <div id="msg" class="msg" role="status" aria-live="polite"></div>
+  </form>
+
+  <section class="card">
+    <h2>📅 예약 현황</h2>
+    <div id="list"><p class="hint">불러오는 중…</p></div>
+  </section>
+
+  <footer class="notice">
+    🔒 <b>개인정보 안내</b><br>
+    입력하신 정보(반, 학번, 이름 등)는 아트홀 예약 확인 용도로만 사용하며,
+    <b>신청일로부터 한 달 뒤 폐기</b>할 예정입니다.
+  </footer>
+</div>
+
+<dialog id="cancelDlg">
+  <h3>예약 취소</h3>
+  <p id="cancelInfo" class="hint"></p>
+  <div class="row">
+    <div><label for="cSid">학번</label><input id="cSid" type="tel" inputmode="numeric" maxlength="5"></div>
+    <div><label for="cName">이름</label><input id="cName" type="text" maxlength="10"></div>
+  </div>
+  <div id="cMsg" class="msg err"></div>
+  <div class="dlg-actions">
+    <button type="button" id="cClose" class="btn ghost">닫기</button>
+    <button type="button" id="cGo" class="btn">취소하기</button>
+  </div>
+</dialog>
+
+<script>
+/* ============ 설정 ============ */
+// Apps Script 웹 앱 URL(…/exec)을 붙여 넣으세요. 비워 두면 '미리보기 모드'로 동작합니다.
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxelC5BSe08s-A_Bv33ial9ujXz1gKAmJkhhClCGBNqoSs48aXWMyVYYzqraGJT-Xal/exec';
+const CAL_START = '2026-11-01';        // 달력에 보여줄 첫 날
+const CAL_END = '2026-12-31';          // 달력에 보여줄 마지막 날 (Code.gs 의 BOOKING_END 와 같게)
+const BLOCKED_FALLBACK = ['2026-11-19', '2026-11-20', '2026-12-25', '2026-12-30'];  // 미리보기용 (실제로는 서버의 BLOCKED_DATES 가 우선)
+
+/* ============ 공통 ============ */
+const $ = s => document.querySelector(s);
+const DAY = ['일', '월', '화', '수', '목', '금', '토'];
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const fmtKo = s => { const d = parseYmd(s); return `${d.getMonth() + 1}월 ${d.getDate()}일(${DAY[d.getDay()]})`; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// 요일별 이용 시간 (Code.gs 의 slotsFor_ 와 같아야 함)
+function slotsFor(dow) {
+  const lunch = { label: '점심시간', time: '12:50~13:10', end: '13:10' };
+  const after = (dow === 2 || dow === 3)                       // 화, 수
+    ? { label: '방과후', time: '16:10~16:30', end: '16:30' }
+    : { label: '방과후', time: '15:20~16:00', end: '16:00' };  // 월, 목, 금
+  return [lunch, after];
+}
+
+const DEFAULT_GRADE = 2;               // 처음 화면에 선택돼 있는 학년
+const state = { grade: DEFAULT_GRADE, cls: null, date: null, time: null, reservations: [], blocked: BLOCKED_FALLBACK, loaded: false };
+
+/* ============ 통신 (실제 / 미리보기) ============ */
+const DEMO = !APPS_SCRIPT_URL;
+
+async function api(action, payload) {
+  if (DEMO) return demoApi(action, payload);
+  if (action === 'list') {
+    const r = await fetch(APPS_SCRIPT_URL + '?action=list');
+    return r.json();
+  }
+  const r = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // 사전 요청(CORS preflight) 방지
+    body: JSON.stringify({ action, ...payload }),
+  });
+  return r.json();
+}
+
+function maskName(n) {
+  if (n.length <= 1) return n;
+  if (n.length === 2) return n[0] + '○';
+  return n[0] + '○'.repeat(n.length - 2) + n[n.length - 1];
+}
+
+function demoApi(action, p) {
+  let db = [];
+  try { db = JSON.parse(localStorage.getItem('arthall_demo') || '[]'); } catch (e) {}
+  const save = () => { try { localStorage.setItem('arthall_demo', JSON.stringify(db)); } catch (e) {} };
+  if (action === 'list') {
+    const today = ymd(new Date());
+    return {
+      ok: true, blocked: BLOCKED_FALLBACK,
+      reservations: db.filter(r => r.date >= today)
+        .map(r => ({ date: r.date, time: r.time, label: r.label, grade: r.grade, cls: r.cls, name: maskName(r.name) }))
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)),
+    };
+  }
+  if (action === 'reserve') {
+    if (db.some(r => r.date === p.date && r.time === p.time)) return { ok: false, error: '이미 예약된 시간대예요.' };
+    const slot = slotsFor(parseYmd(p.date).getDay()).find(s => s.time === p.time);
+    db.push({ date: p.date, time: p.time, label: slot ? slot.label : '', grade: p.grade, cls: p.cls, sid: p.studentId, name: p.name });
+    save(); return { ok: true };
+  }
+  if (action === 'cancel') {
+    const i = db.findIndex(r => r.date === p.date && r.time === p.time);
+    if (i < 0) return { ok: false, error: '해당 예약을 찾을 수 없어요.' };
+    if (db[i].sid !== p.studentId || db[i].name !== p.name) return { ok: false, error: '학번 또는 이름이 예약 정보와 달라요.' };
+    db.splice(i, 1); save(); return { ok: true };
+  }
+  return { ok: false, error: '알 수 없는 요청' };
+}
+
+/* ============ 화면 그리기 ============ */
+function renderClasses() {
+  $('#gradeChips').innerHTML = [1, 2, 3].map(n =>
+    `<button type="button" class="chip${state.grade === n ? ' on' : ''}" data-grade="${n}">${n}학년</button>`).join('');
+  $('#clsChips').innerHTML = [1, 2, 3, 4, 5, 6].map(n =>
+    `<button type="button" class="chip${state.cls === n ? ' on' : ''}" data-cls="${n}">${n}반</button>`).join('');
+}
+
+function isTaken(date, time) { return state.reservations.find(r => r.date === date && r.time === time); }
+function isPast(date, slot) {
+  const now = new Date();
+  return date === ymd(now) && `${pad(now.getHours())}:${pad(now.getMinutes())}` >= slot.end;
+}
+
+// 보고 있는 달 (오늘이 범위 안이면 이번 달, 아니면 가장 가까운 달)
+const cal = (() => {
+  const t = ymd(new Date()), s = t < CAL_START ? CAL_START : t > CAL_END ? CAL_END : t;
+  return { y: Number(s.slice(0, 4)), m: Number(s.slice(5, 7)) };
+})();
+
+function renderDates() {
+  const { y, m } = cal, today = ymd(new Date());
+  const lastDay = new Date(y, m, 0, 12).getDate();
+  const lead = new Date(y, m - 1, 1, 12).getDay();
+  const ym = `${y}-${pad(m)}`;
+  const prevYm = m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`;
+  const nextYm = m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`;
+
+  let cells = DAY.map(n => `<div class="cal-dow">${n}</div>`).join('') + '<span class="cal-empty"></span>'.repeat(lead);
+  for (let d = 1; d <= lastDay; d++) {
+    const s = `${ym}-${pad(d)}`, dow = new Date(y, m - 1, d, 12).getDay();
+    const weekend = dow === 0 || dow === 6;
+    const off = weekend || s < today || s < CAL_START || s > CAL_END || state.blocked.includes(s);
+    let free = 2;
+    if (!off) free = slotsFor(dow).filter(sl => !isTaken(s, sl.time) && !isPast(s, sl)).length;
+    const full = !off && free === 0;
+    const note = full ? '마감' : (!off && free === 1 ? '1칸 남음' : '');
+    const cls = ['cal-day', s === today ? 'today' : '', state.date === s ? 'on' : '', full ? 'full' : ''].join(' ');
+    cells += `<button type="button" class="${cls}" data-date="${s}" ${off || full ? 'disabled' : ''}>${d}<small>${note}</small></button>`;
+  }
+  $('#calendar').innerHTML = `
+    <div class="cal-head">
+      <button type="button" class="cal-nav" data-nav="-1" aria-label="이전 달" ${prevYm < CAL_START.slice(0, 7) ? 'disabled' : ''}>‹</button>
+      <b>${y}년 ${m}월</b>
+      <button type="button" class="cal-nav" data-nav="1" aria-label="다음 달" ${nextYm > CAL_END.slice(0, 7) ? 'disabled' : ''}>›</button>
+    </div>
+    <div class="cal-grid">${cells}</div>`;
+}
+
+function renderSlots() {
+  const box = $('#slots');
+  if (!state.date) { box.innerHTML = '<p class="hint">먼저 날짜를 선택해 주세요.</p>'; return; }
+  const slots = slotsFor(parseYmd(state.date).getDay());
+  box.innerHTML = slots.map(s => {
+    const taken = isTaken(state.date, s.time), past = isPast(state.date, s);
+    const off = taken || past;
+    const status = taken ? `${taken.grade ? taken.grade + '학년 ' : ''}${taken.cls}반 예약됨` : past ? '종료' : '예약 가능';
+    return `<button type="button" class="slot${state.time === s.time ? ' on' : ''}" data-time="${s.time}" ${off ? 'disabled' : ''}>
+      <span><b>${s.label}</b><span class="t">${s.time}</span></span><span class="s">${status}</span></button>`;
+  }).join('');
+}
+
+function renderSummary() {
+  const el = $('#summary');
+  if (!state.cls && !state.date && !state.time) { el.textContent = '예약 내용이 여기에 표시돼요.'; return; }
+  const parts = [
+    state.grade && state.cls ? `<b>${state.grade}학년 ${state.cls}반</b>` : '학년·반 선택 전',
+    state.date ? `<b>${fmtKo(state.date)}</b>` : '날짜 선택 전',
+    state.time ? `<b>${state.time}</b>` : '시간대 선택 전',
+  ];
+  el.innerHTML = parts.join(' · ');
+}
+
+function renderList() {
+  const el = $('#list');
+  if (!state.loaded) return;
+  if (!state.reservations.length) { el.innerHTML = '<p class="hint">아직 예약이 없어요. 첫 번째로 신청해 보세요!</p>'; return; }
+  const groups = {};
+  state.reservations.forEach(r => (groups[r.date] = groups[r.date] || []).push(r));
+  el.innerHTML = Object.keys(groups).sort().map(date => `
+    <div class="day-group"><h3>${fmtKo(date)}</h3>
+      ${groups[date].map(r => `
+        <div class="res">
+          <span><b>${r.grade ? esc(r.grade) + '학년 ' : ''}${esc(r.cls)}반</b> · ${esc(r.label)} ${esc(r.time)} <span class="who">· ${esc(r.name)}</span></span>
+          <button type="button" data-cancel-date="${esc(r.date)}" data-cancel-time="${esc(r.time)}">취소</button>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function renderAll() { renderClasses(); renderDates(); renderSlots(); renderSummary(); renderList(); }
+
+async function refresh() {
+  try {
+    const res = await api('list');
+    if (!res.ok) throw new Error(res.error);
+    state.reservations = res.reservations;
+    state.blocked = res.blocked || BLOCKED_FALLBACK;
+    state.loaded = true;
+    // 선택해 둔 시간대가 그 사이 예약되었으면 선택 해제
+    if (state.date && state.time && isTaken(state.date, state.time)) state.time = null;
+    renderAll();
+  } catch (e) {
+    $('#list').innerHTML = `<p class="msg err">예약 현황을 불러오지 못했어요. <button type="button" class="chip" id="retry">다시 시도</button></p>`;
+  }
+}
+
+/* ============ 이벤트 ============ */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.grade) { state.grade = Number(t.dataset.grade); renderClasses(); renderSummary(); }
+  else if (t.dataset.cls) { state.cls = Number(t.dataset.cls); renderClasses(); renderSummary(); }
+  else if (t.dataset.nav) {
+    cal.m += Number(t.dataset.nav);
+    if (cal.m < 1) { cal.m = 12; cal.y--; } else if (cal.m > 12) { cal.m = 1; cal.y++; }
+    renderDates();
+  }
+  else if (t.dataset.date) { state.date = t.dataset.date; state.time = null; renderDates(); renderSlots(); renderSummary(); }
+  else if (t.dataset.time) { state.time = t.dataset.time; renderSlots(); renderSummary(); }
+  else if (t.id === 'retry') refresh();
+  else if (t.dataset.cancelDate) openCancel(t.dataset.cancelDate, t.dataset.cancelTime);
+});
+
+['#sid', '#cSid'].forEach(s => $(s).addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 5); }));
+
+function setMsg(text, kind) { const m = $('#msg'); m.textContent = text; m.className = 'msg ' + (kind || ''); }
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const sid = $('#sid').value.trim(), name = $('#name').value.trim();
+  if (!state.grade) return setMsg('연습할 학년을 선택해 주세요.', 'err');
+  if (!state.cls) return setMsg('연습할 반을 선택해 주세요.', 'err');
+  if (!state.date) return setMsg('날짜를 선택해 주세요.', 'err');
+  if (!state.time) return setMsg('시간대를 선택해 주세요.', 'err');
+  if (!/^\d{5}$/.test(sid)) return setMsg('학번은 숫자 5자리로 입력해 주세요. (예: 20601)', 'err');
+  if (!/^[가-힣a-zA-Z]{2,10}$/.test(name)) return setMsg('이름을 2~10자로 입력해 주세요.', 'err');
+
+  const btn = $('#submit'); btn.disabled = true; setMsg('예약 중…');
+  try {
+    const res = await api('reserve', { grade: state.grade, cls: state.cls, date: state.date, time: state.time, studentId: sid, name });
+    if (!res.ok) throw new Error(res.error);
+    setMsg(`예약 완료! ${state.grade}학년 ${state.cls}반 · ${fmtKo(state.date)} ${state.time}`, 'ok');
+    state.grade = DEFAULT_GRADE; state.cls = state.date = state.time = null;
+    $('#sid').value = ''; $('#name').value = '';
+  } catch (err) {
+    setMsg(err.message || '예약에 실패했어요. 잠시 후 다시 시도해 주세요.', 'err');
+  } finally {
+    btn.disabled = false;
+    await refresh();
+  }
+});
+
+/* ----- 취소 ----- */
+let cancelTarget = null;
+function openCancel(date, time) {
+  cancelTarget = { date, time };
+  $('#cancelInfo').textContent = `${fmtKo(date)} ${time} 예약을 취소하려면 예약할 때 입력한 학번과 이름을 적어 주세요.`;
+  $('#cSid').value = ''; $('#cName').value = ''; $('#cMsg').textContent = '';
+  $('#cancelDlg').showModal();
+}
+$('#cClose').addEventListener('click', () => $('#cancelDlg').close());
+$('#cGo').addEventListener('click', async () => {
+  const sid = $('#cSid').value.trim(), name = $('#cName').value.trim();
+  if (!/^\d{5}$/.test(sid) || !name) { $('#cMsg').textContent = '학번과 이름을 정확히 입력해 주세요.'; return; }
+  $('#cGo').disabled = true;
+  try {
+    const res = await api('cancel', { ...cancelTarget, studentId: sid, name });
+    if (!res.ok) throw new Error(res.error);
+    $('#cancelDlg').close();
+    setMsg('예약이 취소되었어요.', 'ok');
+    await refresh();
+  } catch (err) {
+    $('#cMsg').textContent = err.message || '취소하지 못했어요.';
+  } finally { $('#cGo').disabled = false; }
+});
+
+/* ============ 시작 ============ */
+if (DEMO) $('#demoBanner').hidden = false;
+renderAll();
+refresh();
+</script>
+</body>
+</html>
